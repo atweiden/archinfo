@@ -1,0 +1,347 @@
+#!/usr/bin/env perl6
+use v6;
+
+=begin pod
+=head NAME
+
+Archinfo
+
+=head SYNOPSIS
+
+B<p6:>
+
+    my Str:D $result = Archinfo.new.output;
+
+B<sh:>
+
+    if ! [[ "$UID" == '0' ]]; then archinfo; else archinfo --color=red; fi
+
+=head DESCRIPTION
+
+Arch system information for the console.
+=end pod
+
+class Archinfo
+{
+has Str:D $!color is required;
+has Str:D $!clear = "\x1b[0m";
+
+# submethod BUILD {{{
+
+submethod BUILD(Str:D :$color! --> Nil)
+{
+    my Str:D %color{Str:D} =
+        :black<0>,
+        :red<1>,
+        :green<2>,
+        :yellow<3>,
+        :blue<4>,
+        :magenta<5>,
+        :cyan<6>,
+        :white<7>;
+
+    my Str:D $color-code = %color{$color}.Str;
+    $!color = sprintf("\x1b[1;3%sm", $color-code);
+}
+
+# end submethod BUILD }}}
+# method new {{{
+
+method new(Str:D :$color = 'blue' --> Archinfo:D)
+{
+    self.bless(:$color);
+}
+
+# end method new }}}
+
+# method output {{{
+
+method output(--> Str:D)
+{
+    # --- my @result {{{
+
+    my Str:D @result =
+        self!output-os(),
+        self!output-hostname(),
+        self!output-kernel(),
+        self!output-uptime(),
+        self!output-window-manager(),
+        self!output-packages(),
+        self!output-ram(),
+        self!output-cpu(),
+        self!output-shell(),
+        self!output-filesystem('/home'),
+        '', '', '';
+
+    # --- end my @result }}}
+    # --- my @output {{{
+
+    my Str:D @output =
+        $!color,
+        $!color,
+        $!color,
+        $!color,
+        $!color,
+        $!color,
+        $!color,
+        @result[0],
+        $!color,
+        @result[1],
+        $!color,
+        @result[2],
+        $!color,
+        @result[3],
+        $!color,
+        @result[4],
+        $!color,
+        @result[5],
+        $!color,
+        @result[6],
+        $!color,
+        @result[7],
+        $!color,
+        @result[8],
+        $!color,
+        @result[9],
+        $!color,
+        @result[10],
+        $!color,
+        @result[11],
+        $!color,
+        @result[12],
+        $!clear;
+
+    # --- end my @output }}}
+    # --- my $output {{{
+
+    my Str:D $output = sprintf(q:to/EOF/, |@output);
+    %s
+    %s               +
+    %s               #
+    %s              ###
+    %s             #####
+    %s             ######
+    %s            ; #####;            %s
+    %s           +##.#####            %s
+    %s          +##########           %s
+    %s         #############;         %s
+    %s        ###############+        %s
+    %s       #######   #######        %s
+    %s     .######;     ;###;`".      %s
+    %s    .#######;     ;#####.       %s
+    %s    #########.   .########`     %s
+    %s   ######'           '######    %s
+    %s  ;####                 ####;   %s
+    %s  ##'                     '##   %s
+    %s #'                         `#  %s
+    %s
+    EOF
+
+    # --- end my $output }}}
+}
+
+# end method output }}}
+
+# method !output {{{
+
+method !output(Str:D $key, Str:D $value --> Str:D)
+{
+    my Str:D $output = sprintf('%s%s:%s %s', $!color, $key, $!clear, $value);
+}
+
+# end method !output }}}
+# method !output-ram {{{
+
+method !output-ram(--> Str:D)
+{
+    my Str:D @mem = qx{free -m}.trim.split("\n")[1].split(/\s+/);
+    my UInt:D $total = Int(@mem[1]);
+    my UInt:D $available = Int(@mem[6]);
+    my UInt:D $used = $total - $available;
+    my Str:D $output-ram =
+        self!output('RAM', sprintf('%s MB / %s MB', $used, $total));
+}
+
+# end method !output-ram }}}
+# method !output-os {{{
+
+method !output-os(--> Str:D)
+{
+    # $*KERNEL.hardware
+    my Str:D $arch = qx{uname -m}.trim;
+    my Str:D $os = sprintf('Arch %s', $arch);
+    my Str:D $output-os = self!output('OS', $os);
+}
+
+# end method !output-os }}}
+# method !output-kernel {{{
+
+method !output-kernel(--> Str:D)
+{
+    my Str:D $kernel = qx{uname -r}.trim;
+    my Str:D $output-kernel = self!output('Kernel', $kernel);
+}
+
+# end method !output-kernel }}}
+# method !output-hostname {{{
+
+method !output-hostname(--> Str:D)
+{
+    my Str:D $hostname = qx{uname -n}.trim;
+    my Str:D $output-hostname = self!output('Hostname', $hostname);
+}
+
+# end method !output-hostname }}}
+# method !output-cpu {{{
+
+method !output-cpu(--> Str:D)
+{
+    my Str:D $cpuinfo = '/proc/cpuinfo'.IO.lines[4].split(':')[1].trim;
+    my Str:D $output-cpu = self!output('CPU', $cpuinfo);
+}
+
+# end method !output-cpu }}}
+# method !output-uptime {{{
+
+method !output-uptime(--> Str:D)
+{
+    my UInt:D $uptime = Int('/proc/uptime'.IO.lines.split('.')[0].trim);
+    my UInt:D $day = Int($uptime / 86400);
+    $uptime = $uptime % 86400;
+    my UInt:D $hour = Int($uptime / 3600);
+    $uptime = $uptime % 3600;
+    my UInt:D $minute = Int($uptime / 60);
+
+    my Str:D $fmt-uptime-day = fmt-uptime-day($day);
+    my Str:D $fmt-uptime-hour-minute = fmt-uptime-hour-minute($hour, $minute);
+    my Str:D $fmt-uptime =
+        sprintf('%s%s', $fmt-uptime-day, $fmt-uptime-hour-minute);
+
+    my Str:D $output-uptime = self!output('Uptime', $fmt-uptime);
+}
+
+multi sub fmt-uptime-day(UInt:D $day where * > 1 --> Str:D)
+{
+    my Str:D $fmt-uptime-day = sprintf('%d days, ', $day);
+}
+
+multi sub fmt-uptime-day(UInt:D $day where * == 1 --> Str:D)
+{
+    my Str:D $fmt-uptime-day = sprintf('%d day, ', 1);
+}
+
+multi sub fmt-uptime-day(UInt:D $ --> Str:D)
+{
+    my Str:D $fmt-uptime-day = '';
+}
+
+sub fmt-uptime-hour-minute(UInt:D $hour, UInt:D $minute --> Str:D)
+{
+    my Str:D $fmt-uptime-hour-minute = sprintf('%d:%02d', $hour, $minute);
+}
+
+# end sub output-uptime }}}
+# method !output-window-manager {{{
+
+method !output-window-manager(--> Str:D)
+{
+    my Str:D $window-manager = get-window-manager();
+    my Str:D $output-window-manager =
+        self!output('Window Manager', $window-manager);
+}
+
+multi sub get-window-manager(--> Str:D)
+{
+    my Str:D %window-manager{Str:D} = :openbox<Openbox>;
+
+    # find running processes
+    my Str:D @process =
+        qqx{ps -u %*ENV<USER>}.trim.split("\n")[1..*]
+        .map({ .trim.split(/\s+/)[3..*].join(' ') })
+        .unique
+        .sort;
+
+    my Set:D $set = %window-manager.keys (&) @process;
+    my Str:D $key = get-window-manager($set);
+    my Str:D $window-manager = %window-manager{$key};
+}
+
+multi sub get-window-manager(Set:D $set where *.elems > 0 --> Str:D)
+{
+    my Str:D $window-manager = $set.pick;
+}
+
+multi sub get-window-manager($ --> Str:D)
+{
+    my Str:D $window-manager = 'None found';
+}
+
+# end method !output-window-manager }}}
+# method !output-shell {{{
+
+method !output-shell(--> Str:D)
+{
+    my Str:D $shell = %*ENV<SHELL>.IO.basename.tc;
+    my Str:D $output-shell = self!output('Shell', $shell);
+}
+
+# end method !output-shell }}}
+# method !output-packages {{{
+
+method !output-packages(--> Str:D)
+{
+    my Str:D $packages = qx{pacman -Qq | wc -l}.trim;
+    my Str:D $output-packages = self!output('Packages', $packages);
+}
+
+# end method !output-packages }}}
+# method !output-filesystem {{{
+
+method !output-filesystem(Str:D $mount --> Str:D)
+{
+    my Str:D @filesystem = qqx{df -TPh $mount}.trim.split("\n")[1].split(/\s+/);
+    my Str:D $filesystem-type = @filesystem[1];
+    my Str:D $filesystem-size = @filesystem[2];
+    my Str:D $filesystem-used = @filesystem[3];
+    my Str:D $filesystem-name = get-filesystem-name($mount);
+    my Str:D $filesystem = sprintf(
+        '%s / %s (%s)',
+        $filesystem-used,
+        $filesystem-size,
+        $filesystem-type
+    );
+    my Str:D $output-filesystem = self!output($filesystem-name, $filesystem);
+}
+
+multi sub get-filesystem-name('/' --> Str:D)
+{
+    my Str:D $filesystem-name = sprintf('%s FS', 'Root');
+}
+
+multi sub get-filesystem-name(Str:D $mount --> Str:D)
+{
+    my Str:D $filesystem-name = sprintf('%s FS', $mount.IO.basename.tc);
+}
+
+# end method !output-filesystem }}}
+}
+
+sub MAIN(Str:D :c(:$color) = 'blue' --> Nil)
+{
+    my Str:D $output = Archinfo.new(:$color).output();
+    print($output);
+}
+
+sub USAGE(--> Nil)
+{
+    constant $HELP = q:to/EOF/.trim;
+    Usage:
+      archinfo [-c|--color=<color>]
+
+    Colors:
+      black, red, green, yellow, blue (default), magenta, cyan, white
+    EOF
+    say($HELP);
+}
+
+# vim: set filetype=perl6 foldmethod=marker foldlevel=0:
