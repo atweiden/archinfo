@@ -363,7 +363,7 @@ read -r -d '' _arch_string <<'EOF'
 %s
 EOF
 
-_arch=$(printf "$_arch_string\\n" "${_output_array[@]}")
+_arch="$(printf "$_arch_string\\n" "${_output_array[@]}")"
 
 # end _arch }}}
 
