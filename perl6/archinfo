@@ -266,7 +266,7 @@ multi sub get-window-manager(--> Str:D)
     my Str:D $window-manager = %window-manager{$key};
 }
 
-multi sub get-window-manager(Set:D $set where *.elems > 0 --> Str:D)
+multi sub get-window-manager(Set:D $set where .elems > 0 --> Str:D)
 {
     my Str:D $window-manager = $set.pick;
 }
