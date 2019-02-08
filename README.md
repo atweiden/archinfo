@@ -3,7 +3,7 @@ Archinfo
 
 Arch system information for the console.
 
-Inspired by Archey v0.3.0, but with simple Bash and Perl6 implementation.
+Inspired by Archey v0.3.0, but with simple Bash and Perl 6 implementation.
 
 
 Licensing
