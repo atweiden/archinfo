@@ -1,4 +1,4 @@
-#!/usr/bin/env perl6
+#!/usr/bin/env raku
 use v6;
 
 =begin pod
@@ -8,11 +8,11 @@ Archinfo
 
 =head SYNOPSIS
 
-B<p6:>
+B<raku:>
 
     my Str:D $result = Archinfo.new.output;
 
-B<sh:>
+B<bash:>
 
     if ! [[ "$UID" == '0' ]]; then archinfo; else archinfo --color=red; fi
 
